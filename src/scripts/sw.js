@@ -1,86 +1,57 @@
 import { precacheAndRoute } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
+import { registerRoute, setCatchHandler } from 'workbox-routing';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
 
-const BASE_URL = 'https://story-api.dicoding.dev';
+const manifest = self.__WB_MANIFEST;
+precacheAndRoute(manifest);
 
-
-precacheAndRoute(self.__WB_MANIFEST);
-
-// Cache FontAwesome and CDNs
 registerRoute(
   ({ url }) => url.origin === 'https://cdnjs.cloudflare.com' || url.origin.includes('fontawesome'),
   new CacheFirst({
     cacheName: 'fontawesome',
-  }),
+    plugins: [new CacheableResponsePlugin({ statuses: [200] })],
+  })
 );
 
-// Cache scripts and styles (excluding login-view.js)
 registerRoute(
-  ({ request, url }) =>
-    (request.destination === 'script' || request.destination === 'style') &&
-    !url.pathname.endsWith('login-view.js'),
+  ({ request }) => ['script', 'style'].includes(request.destination),
   new CacheFirst({
     cacheName: 'assets-cache',
-  }),
+    plugins: [new CacheableResponsePlugin({ statuses: [200] })],
+  })
 );
 
-// Cache image requests from your API
-registerRoute(
-  ({ request, url }) =>
-    url.origin === BASE_URL && request.destination === 'image',
-  new StaleWhileRevalidate({
-    cacheName: 'StoryApp-API-images-cache',
-  }),
-);
-
-// Cache other API responses
-registerRoute(
-  ({ request, url }) =>
-    url.origin === BASE_URL && request.destination !== 'image',
-  new NetworkFirst({
-    cacheName: 'StoryApp-API-cache',
-    networkTimeoutSeconds: 3,
-  }),
-);
-
-// Cache map tiles from OpenStreetMap (Leaflet)
 registerRoute(
   ({ url }) => url.origin.includes('tile.openstreetmap.org'),
   new StaleWhileRevalidate({
     cacheName: 'osm-tiles',
-  }),
-);
-
-// Cache images from other sources
-registerRoute(
-  ({ request }) => request.destination === 'image',
-  new CacheFirst({
-    cacheName: 'images-cache',
-  }),
-);
-
-// Offline fallback for navigation requests (pages)
-registerRoute(
-  ({ request, url }) =>
-    request.mode === 'navigate' && !url.pathname.includes('/login'),
-  new NetworkFirst({
-    cacheName: 'pages-cache',
+    plugins: [new CacheableResponsePlugin({ statuses: [200] })],
   })
 );
 
-// Handle push notifications
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || { title: 'No payload' };
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body || 'Push message received',
-      icon: '/icons/icon-512x512.png',
-    })
-  );
+registerRoute(
+  ({ request, url }) => request.mode === 'navigate' &&
+  new NetworkFirst({
+    cacheName: 'pages-cache',
+    plugins: [new CacheableResponsePlugin({ statuses: [200] })],
+  })
+);
+
+setCatchHandler(async ({ event }) => {
+  if (event.request.mode === 'navigate') {
+    return caches.match('/offline.html');
+  }
+  return Response.error();
 });
 
-// Lifecycle events
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', () => self.clients.claim());
+self.addEventListener('install', () => {
+  console.log('Service Worker: Menginstall');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  console.log('Service Worker: Mengaktifkan');
+  event.waitUntil(self.clients.claim());
+});

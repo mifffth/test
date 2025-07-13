@@ -1,65 +1,42 @@
 import * as css from '../styles/styles.css';
 
-import { LoginView } from './views/login-view.js';
-import { RegisterView } from './views/register-view.js';
-import { StoryListView } from './views/story-list-view.js';
-import { StoryAddView } from './views/story-add-view.js';
-import { NotFoundView } from './views/not-found-view.js';
+import { HomeView } from './views/home-view.js';
+import { MapView } from './views/map-view.js';
+import { CreditView } from './views/credit-view.js';
 
-import { LoginPresenter } from './presenters/login-presenter.js';
-import { RegisterPresenter } from './presenters/register-presenter.js';
-import { StoryListPresenter } from './presenters/story-list-presenter.js';
-import { StoryAddPresenter } from './presenters/story-add-presenter.js';
-import { NotFoundPresenter } from './presenters/not-found-presenter.js';
-import { updateAuthUI } from './utils/auth-ui.js';
+import { HomePresenter } from './presenters/home-presenter.js';
+import { MapPresenter } from './presenters/map-presenter.js';
+import { CreditPresenter } from './presenters/credit-presenter.js';
 
 const main = document.querySelector('main');
 const navbar = document.getElementById('main-nav');
 const menuToggle = document.getElementById('menu-toggle');
 
-
 function renderView() {
-    let hash = window.location.hash || null;
-
-    const token = localStorage.getItem('token');
-    const loggedIn = !!token;
-    if (!loggedIn && !['#/login', '#/logout', '#/add', '#/register'].includes(hash)) {
-        alert('Anda harus masuk untuk melihat cerita!');
-        window.location.hash = '#/login';
-        return;
-    }
+    let hash = window.location.hash || '#/home';
 
     document.startViewTransition(() => {
         let view = null;
         let presenter = null;
         switch (hash) {
-            case '':
-            case '#/':
-                view = new StoryListView(main);
-                presenter = new StoryListPresenter();
+            case '#/home':
+                view = new HomeView(main);
+                presenter = new HomePresenter();
                 break;
-            case '#/login':
-                view = new LoginView(main);
-                presenter = new LoginPresenter();
+            case '#/map':
+                view = new MapView(main);
+                presenter = new MapPresenter();
                 break;
-            case '#/stories':
-                view = new StoryListView(main);
-                presenter = new StoryListPresenter();
-                break;
-            case '#/add':
-                view = new StoryAddView(main);
-                presenter = new StoryAddPresenter();
-                break;
-            case '#/register':
-                view = new RegisterView(main);
-                presenter = new RegisterPresenter();
+            case '#/credit':
+                view = new CreditView(main);
+                presenter = new CreditPresenter();
                 break;
             default:
                 view = new NotFoundView(main);
                 presenter = new NotFoundPresenter();
         }
-        view.setPresenter(presenter);
         presenter.setView(view);
+        view.setPresenter(presenter);
         presenter.onPageLoad();
 
         setTimeout(() => {
@@ -71,47 +48,6 @@ function renderView() {
 window.addEventListener('hashchange', renderView);
 window.addEventListener('load', renderView);
 window.addEventListener('DOMContentLoaded', () => {
-    updateAuthUI();
-
-    document.getElementById('nav-logout').addEventListener('click', () => {
-        const confirmLogout = window.confirm('Anda yakin ingin keluar?');
-
-        if (confirmLogout) {
-            localStorage.removeItem('token');
-            updateAuthUI();
-
-            const msg = document.createElement('div');
-            msg.textContent = 'Anda telah logout.';
-            msg.className = 'logout-message';
-            main.innerHTML = '';
-            main.appendChild(msg);
-
-            gsap.fromTo(
-                msg,
-                { y: -30, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.6, ease: 'power2.out' }
-            );
-
-            setTimeout(() => {
-                window.location.hash = '#/login';
-            }, 1200);
-        }
-    });
-
-    document.querySelectorAll('nav a, nav button').forEach(link => {
-        link.addEventListener('mouseenter', () => {
-            if (window.innerWidth > 768) {
-            gsap.to(link, { scale: 1.1, duration: 0.2, ease: 'power2.out' });
-            }
-        });
-
-        link.addEventListener('mouseleave', () => {
-            if (window.innerWidth > 768) {
-            gsap.to(link, { scale: 1, duration: 0.2, ease: 'power2.out' });
-            }
-        });
-    });
-
     document.addEventListener('click', (e) => {
         const isClickInsideNav = navbar.contains(e.target);
         const isClickOnToggle = menuToggle.contains(e.target);
@@ -120,13 +56,13 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/sw.bundle.js").then(() => {
-            console.log("Service Worker registered.");
-          });
-        });
-      } else {
-        console.log("Service Worker is not supported by this browser.");
-      }
+    // if ("serviceWorker" in navigator) {
+    //     window.addEventListener("load", () => {
+    //       navigator.serviceWorker.register("/sw.bundle.js").then(() => {
+    //         console.log("Service Worker registered.");
+    //       });
+    //     });
+    //   } else {
+    //     console.log("Service Worker is not supported by this browser.");
+    //   }
 });
